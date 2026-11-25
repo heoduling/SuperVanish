@@ -21,13 +21,20 @@ public class VanishPlayer {
 
     private final SuperVanish plugin;
     private final UUID playerUUID;
-    private boolean itemPickUps;
-    private int seePermissionLevel, usePermissionLevel;
+    private volatile boolean itemPickUps;
+    private volatile int seePermissionLevel, usePermissionLevel;
+    private volatile boolean seeAllowed, toggleProtected;
 
     VanishPlayer(Player player, SuperVanish plugin, boolean itemPickUps) {
         this.plugin = plugin;
         this.playerUUID = player.getUniqueId();
         this.itemPickUps = itemPickUps;
+        if (org.bukkit.Bukkit.isOwnedByCurrentRegion(player)) refreshPermissions(player);
+    }
+
+    public void refreshPermissions(Player player) {
+        seeAllowed = player.hasPermission("sv.see");
+        toggleProtected = player.hasPermission("sv.notoggle");
         if (plugin.getSettings().getBoolean("IndicationFeatures.LayeredPermissions.LayeredSeeAndUsePermissions", false)) {
             seePermissionLevel = plugin.getLayeredPermissionLevel(player, "see");
             usePermissionLevel = plugin.getLayeredPermissionLevel(player, "use");
@@ -53,6 +60,9 @@ public class VanishPlayer {
     public int getUsePermissionLevel() {
         return usePermissionLevel;
     }
+
+    public boolean canSeeVanished() { return seeAllowed; }
+    public boolean isToggleProtected() { return toggleProtected; }
 
     public void setItemPickUps(boolean itemPickUps) {
         this.itemPickUps = itemPickUps;

@@ -1,195 +1,147 @@
-# SuperVanish v${project.version} - Configuration
+# SuperVanish 中文配置
+# 修改后用 /sv reload 重载；true 启用，false 关闭。键名和命令参数保持英文。
+# 用空格缩进，不要用 Tab。
 
-############# Invisibility Features ##############
+
+# 隐身功能
 InvisibilityFeatures:
-  # Should invisible players get night vision?
+  # 给予夜视，显形时恢复原有未过期的效果。
   NightVisionEffect: true
-  # Should SV disable damage for invisible players?
+  # 免疫伤害。
   DisableDamage: true
-  # Should SV disable hunger for invisible players?
+  # 不消耗饥饿值。
   DisableHunger: true
-  # Should SV prevent mobs from targeting invisible players?
+  # 阻止生物将隐身者作为攻击目标。
   DisableMobTarget: true
-  # Should invisible players open chests and shulker boxes without the animation and sound?
-  # This makes them go into spectator mode temporarily. It's better to only give access to this feature
-  # to staff members since a server crash can cause players to stay in spectator mode.
-  # Permission: sv.silentchest
+  # 静默开箱，需要 sv.silentchest 权限；会临时切换为旁观模式，仅建议授予可信管理员。
   OpenChestsSilently: true
-  # Should invisible players not be able to trigger pressure plates and tripwire?
-  # If this feature is enabled invisible players can't trigger pressure plates and tripwire.
+  # 不触发压力板和绊线。
   DisablePressurePlates: true
-  # Should invisible players not be able to push other players or be able to be pushed?
-  # WARNING: Uses the scoreboard and may conflict with other plugins!
+  # 禁止玩家碰撞推挤；本适配使用玩家碰撞标志，不创建计分板队伍。
   DisablePush: false
-  # Should vanished players pick up items by default? This can be changed individually with /sv tipu
+  # 默认是否捡拾物品；用 /sv tipu 单独切换。
   DefaultPickUpItemsOption: false
-  # Should SV modify tablist packets to prevent the server from leaking who is online?
-  # This currently only works on versions below 1.19
+  # 使用可选 PacketEvents 过滤现代玩家列表数据包；基础隐身不依赖数据包插件。
   ModifyTablistPackets: true
-  # Should SV modify tab complete packets to prevent minecraft commands from leaking who is online?
+  # 使用可选 PacketEvents 过滤命令补全中的隐身玩家姓名。
   ModifyTabCompletePackets: true
-  # Should vanished players be unable to trigger the vibration of a sculk sensor?
+  # 不触发幽匿感测体。
   PreventSculkSensorActivation: true
-  # Should vanished players be unable to break turtle eggs?
+  # 不踩碎海龟蛋。
   PreventTurtleEggBreaking: true
-  # Should vanished players not activate the tipping effect on dripleaves?
+  # 不使大型垂滴叶倾斜。
   DisableDripLeaf: true
-  # Should vanished players be unable to trigger raids?
+  # 不触发袭击。
   PreventRaidTriggering: true
-  # Should vanished players be unable to make mobs spawn? (paper only)
+  # 不作为自然生物生成的玩家条件。
   PreventMobSpawning: true
-
+  # 飞行设置
   Fly:
-    # Should invisible players be able to fly even if they aren't in creative/spectator mode?
+    # 允许隐身玩家在生存等模式下飞行。
     Enable: true
-    # Should invisible players WITHOUT the permission 'sv.keepfly' lose the ability to fly on reappear?
+    # 显形时取消飞行能力；拥有 sv.keepfly 权限者除外。
     DisableOnReappear: true
 
-############# Vanish State Features ##############
+# 自动切换隐身状态
 VanishStateFeatures:
-  # Should players with the permission 'sv.joinvanished' join vanished all the time?
-  # Doesn't work if you use GroupManager for permissions
+  # 拥有 sv.joinvanished 权限者每次进服自动隐身。
   AutoVanishOnJoin: false
-  # Should invisible players reappear automatically when they change their world?
+  # 切换世界时自动显形。
   ReappearOnWorldChange: false
-  # Should invisible players reappear automatically when they leave the server?
+  # 退出服务器时清除已保存的隐身状态。
   ReappearOnQuit: false
-  # Should invisible players reappear automatically
-  # when they change their world and don't have the permission 'sv.use' anymore?
+  # 切换世界后没有 sv.use 权限则自动显形。
   CheckPermissionOnWorldChange: false
-  # Should invisible players reappear automatically
-  # when they leave the server and don't have the permission 'sv.use' anymore?
+  # 退出时没有 sv.use 权限则清除隐身状态。
   CheckPermissionOnQuit: false
-  # Should invisible players reappear automatically
-  # when they join the server and don't have the permission 'sv.use' anymore?
-  # Doesn't work if you use GroupManager for permissions
+  # 进服时没有 sv.use 权限则清除隐身状态。
   CheckPermissionOnLogin: false
 
-############## Indication Features ###############
+# 管理员可见性和提示
 IndicationFeatures:
+  # 分级可见权限
   LayeredPermissions:
-    # Should players with the permission 'sv.see' be able to see invisible players in the tablist & in-game?
+    # 拥有 sv.see 权限者可看见隐身玩家。
     EnableSeePermission: true
-    # Should sv.use and sv.see be layered? => sv.use.levelX, sv.see.levelX
-    # Players can see a vanished player if their see level is higher or equal to the other player's use level
-    # Note: You have to rejoin for changes to take effect if you changed those permissions while being online
+    # 启用 sv.use.levelX 与 sv.see.levelX；see 等级不低于目标 use 等级时可见。在线改权限后需重新进服。
     LayeredSeeAndUsePermissions: false
-    # What should be the highest level for both permissions?
-    # Lower amounts might improve performance with more players since they reduce the amount of permission checks
+    # 分级权限最高等级；数值越大，检查次数可能越多。
     MaxLevel: 100
-  # Should vanished players show up dark gray in the tablist and should only their head be visible?
-  # Only players who are allowed to see the player will see this effect; this helps other staff with
-  # differentiating them from players they should talk to; Requires ProtocolLib
-  # This currently only works on versions below 1.19
+  # 向有权看见隐身者的管理员显示旁观者样式，需要 PacketEvents；已验证 Minecraft 26.2。
   MarkVanishedPlayersAsSpectators: true
 
-################ Message Options #################
+# 消息开关；文案在 messages.yml 修改
 MessageOptions:
-
+  # 假进退服消息
   FakeJoinQuitMessages:
-    # Should SV broadcast any kind of announcement (fake quit or player vanished) when a player vanishes?
-    # You can change the messages in the messages.yml file.
+    # 隐身时广播假退出消息或管理员通知。
     BroadcastFakeQuitOnVanish: true
-    # Should SV broadcast any kind of announcement (fake join or player reappeared) when a player reappears?
-    # You can change the messages in the messages.yml file.
+    # 显形时广播假加入消息或管理员通知。
     BroadcastFakeJoinOnReappear: true
-    # Should players with the permission 'sv.see' get an admin announcement instead of a fake join/quit message?
-    # You can change the messages in the messages.yml file.
+    # 拥有 sv.see 权限者收到管理员通知。
     AnnounceVanishReappearToAdmins: true
-    # Should there only be admin announcements and no fake join/quit messages?
+    # 只发送管理员通知。
     SendMessageOnlyToAdmins: false
-    # Should there only be fake join/quit messages and no admin announcements?
+    # 只发送普通玩家的假进退服消息。
     SendMessageOnlyToUsers: false
-
-  # Should SV hide the real join/leave messages of invisible players?
+  # 隐藏隐身者真实进退服的公开消息。
   HideRealJoinQuitMessages: true
-  # Should SV hide the advancement messages of invisible players (only send it to the player)? (paper only)
+  # 隐身者的进度消息仅发给本人。
   HideAdvancementMessages: true
-  # Should SV hide leave messages for invisible players if 'VanishStateFeatures->ReappearOnQuit' is turned on?
-  # Overrides 'HideRealJoinQuitMessages'
+  # 退出时显形仍隐藏真实退出消息；优先于 HideRealJoinQuitMessages。
   ReappearOnQuitHideLeaveMsg: true
-  # If the setting above is turned on, should players with the permission 'sv.see' get
-  # a message when an invisible player joins/quits?
+  # 向拥有 sv.see 权限者通知隐身玩家真实进退服。
   AnnounceRealJoinQuitToAdmins: true
-  # If the setting above is turned on, should players with the permission 'sv.see' get
-  # a message when an invisible player dies?
+  # 向拥有 sv.see 权限者通知隐身玩家死亡。
   AnnounceDeathToAdmins: true
-  # Should SV remind players who join the server vanished of being invisible (in chat)?
-  # You can change the message in the messages.yml file.
+  # 进服时提醒玩家仍处于隐身状态。
   RemindVanishedOnJoin: true
-  # Should invisible players have an action bar which tells them that they're invisible?
-  # You can change the action bar in the messages.yml file.
+  # 在动作栏持续提示隐身状态。
   DisplayActionBar: true
 
-############## Restrictive Options ###############
+# 隐身操作限制
 RestrictiveOptions:
-  # Should invisible players not be able to break blocks?
-  # Bypass permission: sv.breakblocks
+  # 禁止破坏方块；sv.breakblocks 可绕过。
   PreventBlockBreaking: false
-  # Should invisible players not be able to place blocks?
-  # Bypass permission: sv.placeblocks
+  # 禁止放置方块；sv.placeblocks 可绕过。
   PreventBlockPlacing: false
-  # Should invisible players not be able to damage players or mobs?
-  # Bypass permission: sv.damage
+  # 禁止伤害玩家或生物；sv.damage 可绕过。
   PreventHittingEntities: false
 
-############# External Invisibility ##############
+# 服务器列表中的隐身处理
 ExternalInvisibility:
-
+  # 服务器列表显示
   ServerList:
-    # Should this plugin adjust the amount of players in the serverlist? (-1 per invisible player)
+    # 在线人数扣除隐身玩家。
     AdjustAmountOfOnlinePlayers: true
-    # Should this plugin hide invisible players in the list of logged in players?
-    # You can view this list when your mouse hovers over the amount of online players.
+    # 从悬停在线人数时显示的玩家列表中移除隐身者。
     AdjustListOfLoggedInPlayers: true
 
-################## Hook Options ##################
+# 可选插件联动；安装对应插件后才生效
 HookOptions:
-  # Should SV hide invisible players in /who, /list, /online, /near, etc?
-  # Note: Players with the permission essentials.vanish.interact can still see invisible players in these commands
-  # Important: You have to reload both SV and Essentials if you change this setting (reload SV first)
+  # 在 Essentials 的 /who、/list、/online、/near 中隐藏玩家；essentials.vanish.interact 可查看。修改后先重载 SV 再重载 Essentials。
   EnableEssentialsHook: true
-  # Should SV hide invisible players on your dynamic map and broadcast join/leave messages if you use Dynmap?
+  # 在 Dynmap 地图中隐藏隐身者。
   EnableDynmapHook: true
-  # Should SV send fake join/leave messages in dynmap's web-chat?
-  # You can configure the join/leave messages in the messages.yml file
+  # 在 Dynmap 网页聊天中发送假进退服消息。
   DynmapSendJoinLeaveMessages: true
-  # Should SV hook into TrailGUI and disable trails while you're vanished?
+  # 隐身时关闭 TrailGUI 拖尾。
   EnableTrailGUIHook: true
-  # Should SV hook into PlaceholderAPI and add new placeholders to SV + register its own ones for other plugins?
-  # Own ones: isvanished, vanishedplayers, playercount
-  # Format: %supervanish_<placeholder>%
+  # 接入 PlaceholderAPI；支持 %supervanish_isvanished%、%supervanish_vanishedplayers%、%supervanish_playercount%。
   EnablePlaceholderAPIHook: true
-  # Should SV hook into MVdWPlaceholderAPI and add new placeholders to SV + register its own ones for other
-  # plugins?
-  # Own ones: isvanished, vanishedplayers, playercount
-  # Format: {supervanish_<placeholder>}
+  # 接入 MVdWPlaceholderAPI；格式为 {supervanish_isvanished} 等。
   EnableMVdWPlaceholderAPIHook: true
-  # Should SV stop NPCs from greeting or talking about hidden players?
+  # 阻止 Citizens NPC 向隐身玩家问候或谈论他们。
   EnableCitizensHook: true
-  # Should SV use OpenInv for opening chests silently?
+  # 安装 OpenInv 后优先使用其静默开箱能力。
   EnableOpenInvHook: true
 
-############# Compatibility Options ##############
+# 高级兼容设置；可用 LOWEST、LOW、NORMAL、HIGH、HIGHEST、MONITOR，修改后需验证事件顺序。
 CompatibilityOptions:
-  # This section is for advanced users only!
-  # The event priority which SuperVanish should use for the specific event.
-  # Allowed values are LOWEST, LOW, NORMAL, HIGH, HIGHEST and MONITOR
-  # Higher priorities might override other plugins while lower ones might not
-
-  # The priority for removing the join message
-  PlayerJoinEventPriority: HIGH # <- keep HIGH if you use Essentials to modify join/quit messages !!
-  # The priority for removing the quit message
+  # 隐藏进服消息的优先级；使用 Essentials 修改进退服消息时保持 HIGH。
+  PlayerJoinEventPriority: HIGH
+  # 隐藏退服消息的优先级。
   PlayerQuitEventPriority: HIGH
 
-############# Miscellaneous Options ##############
-MiscellaneousOptions:
-
-  UpdateChecker:
-    # Should SV check for updates on spigot regularly? There is no automatic update; this just informs you
-    Enable: true
-    # Should players with the permission 'sv.notify' get notified if the current version of SV is outdated?
-    NotifyAdmins: true
-
-################# Do Not Touch ###################
+# 自动维护的版本，请勿修改。
 ConfigVersion: ${project.version}

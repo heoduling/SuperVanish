@@ -32,6 +32,8 @@ public abstract class PluginHook implements Listener {
     public void onPluginDisable(Plugin plugin) {
     }
 
+    public void cleanupPlayer(org.bukkit.entity.Player player) { }
+
     public Plugin getPlugin() {
         return plugin;
     }

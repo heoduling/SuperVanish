@@ -1,12 +1,14 @@
 name: SuperVanish
 main: de.myzelyam.supervanish.SuperVanish
 author: MyzelYam
-description: Advanced /vanish plugin which makes other players think that you're not on the server
+description: 支持 Folia 和受控热加载的玩家隐身插件
 version: ${project.version}
 api-version: 1.13
+folia-supported: true
 website: https://www.spigotmc.org/resources/supervanish-be-invisible.1331/
 softdepend:
-- ProtocolLib
+- PlugManX
+- packetevents
 - LibsDisguises
 - DisguiseCraft
 - dynmap
@@ -21,7 +23,7 @@ softdepend:
 commands:
   sv:
     usage: /sv
-    description: SuperVanish's main command
+    description: SuperVanish 隐身指令，使用 /sv help 查看中文帮助
     aliases: [supervanish, v, vanish]
 permissions:
   sv.*:
@@ -38,24 +40,23 @@ permissions:
       sv.recreatefiles: true
       sv.notoggle: true
       sv.joinvanished: true
-      sv.notify: true
       sv.breakblocks: true
       sv.placeblocks: true
       sv.damage: true
       sv.stacktrace: true
       sv.silentchest: true
-    description: Grants you all SuperVanish permissions
+    description: 授予全部 SuperVanish 权限
   supervanish.*:
     children:
       sv.*: true
-    description: Grants you all SuperVanish permissions
+    description: 授予全部 SuperVanish 权限
   sv.see:
-    description: You can see other vanished players
+    description: 允许看见其他隐身玩家
   sv.notoggle:
-    description: Other players cannot hide/show you if you're online
+    description: 在线时阻止其他玩家更改你的隐身状态
   sv.keepfly:
-    description: You can always keep flying when you reappear
+    description: 显形后保留飞行能力
   sv.joinvanished:
-    description: You always join vanished (must be enabled in config)
+    description: 进服自动隐身（需开启配置）
   sv.silentchest:
-    description: You can open chests silently
+    description: 允许静默开箱

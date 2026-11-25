@@ -1,104 +1,63 @@
-/*
- * Copyright © 2015, Leon Mangler and the SuperVanish contributors
- *
- * This Source Code Form is subject to the terms of the Mozilla Public
- * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at http://mozilla.org/MPL/2.0/.
- */
-
+/* Copyright © 2015, Leon Mangler and the SuperVanish contributors. MPL-2.0. */
 package de.myzelyam.supervanish.visibility.hiders;
-
-import com.google.common.collect.ImmutableSet;
-
 import de.myzelyam.supervanish.SuperVanish;
-
 import org.bukkit.entity.Player;
-import org.bukkit.event.EventHandler;
-import org.bukkit.event.EventPriority;
-import org.bukkit.event.Listener;
+import org.bukkit.event.*;
 import org.bukkit.event.player.PlayerQuitEvent;
-
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 public abstract class PlayerHider implements Listener {
-
     protected final SuperVanish plugin;
-    protected final Map<Player, Set<Player>> playerHiddenFromPlayersMap = new ConcurrentHashMap<>();
-
+    private final Map<UUID, Set<UUID>> hiddenFrom = new ConcurrentHashMap<>();
     public PlayerHider(SuperVanish plugin) {
-        this.plugin = plugin;
-        registerQuitListener();
+        this.plugin = plugin; plugin.getServer().getPluginManager().registerEvents(this, plugin);
     }
-
     public abstract String getName();
-
-    public boolean isHidden(Player player, Player viewer) {
-        return !player.getUniqueId().equals(viewer.getUniqueId())
-                && playerHiddenFromPlayersMap.containsKey(player)
-                && playerHiddenFromPlayersMap.get(player).contains(viewer);
+    public boolean isHidden(Player player, Player viewer) { return isHidden(player.getUniqueId(), viewer); }
+    public boolean isHidden(UUID id, Player viewer) {
+        Set<UUID> viewers = hiddenFrom.get(id);
+        return !id.equals(viewer.getUniqueId()) && viewers != null && viewers.contains(viewer.getUniqueId());
     }
-
-    public boolean isHidden(UUID playerUUID, Player viewer) {
-        if (playerUUID.equals(viewer.getUniqueId())) return false;
-        for (Player p : playerHiddenFromPlayersMap.keySet()) {
-            if (p.getUniqueId().equals(playerUUID)) {
-                return playerHiddenFromPlayersMap.get(p).contains(viewer);
-            }
-        }
-        return false;
+    public boolean isHidden(String name, Player viewer) {
+        Player target = plugin.player(name);
+        return target != null && isHidden(target.getUniqueId(), viewer);
     }
-
-    public boolean isHidden(String playerName, Player viewer) {
-        if (playerName.equalsIgnoreCase(viewer.getName())) return false;
-        for (Player p : playerHiddenFromPlayersMap.keySet()) {
-            if (p.getName().equalsIgnoreCase(playerName)) {
-                return playerHiddenFromPlayersMap.get(p).contains(viewer);
-            }
-        }
-        return false;
-    }
-
-    /**
-     * @return TRUE if the operation changed the state, FALSE if it did not
-     */
     public boolean setHidden(Player player, Player viewer, boolean hidden) {
-        if (!playerHiddenFromPlayersMap.containsKey(player))
-            playerHiddenFromPlayersMap.put(player, new HashSet<>());
-        if (viewer == player) return false;
-        Set<Player> hiddenFromPlayers = playerHiddenFromPlayersMap.get(player);
-        if (hidden && !hiddenFromPlayers.contains(viewer)) {
-            hiddenFromPlayers.add(viewer);
-            return true;
-        } else if (!hidden && hiddenFromPlayers.contains(viewer)) {
-            hiddenFromPlayers.remove(viewer);
-            return true;
-        }
-        return false;
+        UUID id = player.getUniqueId(), viewing = viewer.getUniqueId();
+        if (viewing.equals(id)) return false;
+        boolean[] changed = {false};
+        hiddenFrom.compute(id, (key, viewers) -> {
+            // Re-check at publication: target quit can run while this viewer's task is queued.
+            // Session removal precedes forget(), which uses this same target-key operation.
+            if (!isCurrentSession(player) || !isCurrentSession(viewer)) return viewers;
+            if (viewers == null && !hidden) return null;
+            if (viewers == null) viewers = ConcurrentHashMap.newKeySet();
+            changed[0] = hidden ? viewers.add(viewing) : viewers.remove(viewing);
+            return viewers.isEmpty() ? null : viewers;
+        });
+        return changed[0];
     }
-
+    protected final boolean isCurrentSession(Player player) {
+        return plugin.player(player.getUniqueId()) == player;
+    }
     public Set<Player> getHiddenPlayerKeys() {
-        return playerHiddenFromPlayersMap.keySet();
+        Set<Player> targets = new HashSet<>();
+        for (UUID id : hiddenFrom.keySet()) { Player player = plugin.player(id); if (player != null) targets.add(player); }
+        return Set.copyOf(targets);
     }
-
-    private void registerQuitListener() {
-        plugin.getServer().getPluginManager().registerEvents(new Listener() {
-
-            @EventHandler(priority = EventPriority.MONITOR)
-            public void onQuit(final PlayerQuitEvent e) {
-                plugin.getServer().getScheduler().runTaskLater(plugin, new Runnable() {
-                    @Override
-                    public void run() {
-                        playerHiddenFromPlayersMap.remove(e.getPlayer());
-                        for (Player p : ImmutableSet.copyOf(playerHiddenFromPlayersMap.keySet())) {
-                            playerHiddenFromPlayersMap.get(p).remove(e.getPlayer());
-                        }
-                    }
-                }, 1);
-            }
-        }, plugin);
+    @EventHandler(priority = EventPriority.MONITOR) public void onQuit(PlayerQuitEvent event) {
+        UUID id = event.getPlayer().getUniqueId();
+        // The configurable QuitListener may also run at MONITOR after this listener.
+        // It ends the session and calls forget; never clean a still-current or replacement session here.
+        if (plugin.player(id) == null) forget(id);
     }
+    public void forget(UUID id) {
+        hiddenFrom.computeIfPresent(id, (key, viewers) -> plugin.player(id) == null ? null : viewers);
+        for (UUID target : Set.copyOf(hiddenFrom.keySet())) hiddenFrom.computeIfPresent(target, (key, viewers) -> {
+            if (plugin.player(id) != null) return viewers; // An old quit must not erase a replacement session's edges.
+            viewers.remove(id); return viewers.isEmpty() ? null : viewers;
+        });
+    }
+    public void clear() { hiddenFrom.clear(); }
 }

@@ -29,9 +29,11 @@ public abstract class Feature implements Listener {
     public void onDisable() {
     }
 
+    public void cleanupPlayer(org.bukkit.entity.Player player) { }
+
     public abstract boolean isActive();
 
     protected void delay(Runnable runnable) {
-        plugin.getServer().getScheduler().runTaskLater(plugin, runnable, 1);
+        plugin.getLifecycle().global(runnable);
     }
 }

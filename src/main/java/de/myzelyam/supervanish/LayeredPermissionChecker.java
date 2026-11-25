@@ -39,21 +39,30 @@ public class LayeredPermissionChecker {
     }
 
     public boolean hasPermissionToSee(Player viewer, Player viewed) {
+        VanishPlayer target = plugin.findVanishPlayer(viewed.getUniqueId());
+        return hasPermissionToSee(viewer, viewed.getUniqueId(), target == null ? 1 : target.getUsePermissionLevel());
+    }
+
+    /** Detached target identity/level: delivery may happen after the target has quit. */
+    public boolean hasPermissionToSee(Player viewer, java.util.UUID viewedId, int viewedUseLevel) {
         if (viewer == null)
             throw new IllegalArgumentException("viewer cannot be null");
-        if (viewer == viewed) return true;
+        if (viewer.getUniqueId().equals(viewedId)) return true;
         if (settings.getBoolean(
                 "IndicationFeatures.LayeredPermissions.LayeredSeeAndUsePermissions", false)) {
-            VanishPlayer vanishViewer = plugin.getVanishPlayer(viewer);
-            VanishPlayer vanishViewed = plugin.getVanishPlayer(viewed);
+            VanishPlayer vanishViewer = plugin.findVanishPlayer(viewer.getUniqueId());
+            if (vanishViewer == null) return false;
             int viewerLevel = vanishViewer.getSeePermissionLevel();
             if (viewerLevel == 0) return false;
-            int viewedLevel = Math.max(1, vanishViewed.getUsePermissionLevel());
+            int viewedLevel = Math.max(1, viewedUseLevel);
             return viewerLevel >= viewedLevel;
         } else {
             boolean enableSeePermission = settings
                     .getBoolean("IndicationFeatures.LayeredPermissions.EnableSeePermission", true);
-            return enableSeePermission && viewer.hasPermission("sv.see");
+            if (!enableSeePermission) return false;
+            if (org.bukkit.Bukkit.isOwnedByCurrentRegion(viewer)) return viewer.hasPermission("sv.see");
+            VanishPlayer state = plugin.findVanishPlayer(viewer.getUniqueId());
+            return state != null && state.canSeeVanished();
         }
     }
 

@@ -32,14 +32,14 @@ public class RecreateFiles extends SubCommand {
             String changes;
             if (plugin.getConfigMgr().isSettingsUpdateRequired()
                     && plugin.getConfigMgr().isMessagesUpdateRequired()) {
-                updates = "the config and the messages file";
-                changes = "all settings and messages";
+                updates = "配置和消息文件";
+                changes = "全部设置和消息";
             } else if (plugin.getConfigMgr().isSettingsUpdateRequired()) {
-                updates = "the config";
-                changes = "all settings";
+                updates = "配置文件";
+                changes = "全部设置";
             } else {
-                updates = "the messages file";
-                changes = "all messages";
+                updates = "消息文件";
+                changes = "全部消息";
             }
             if (args.length != 2) {
                 if (!plugin.getConfigMgr().isSettingsUpdateRequired()
@@ -59,46 +59,21 @@ public class RecreateFiles extends SubCommand {
                     return;
                 }
                 if (args[1].equalsIgnoreCase("force")) {
-                    updates = "the config and the messages file";
-                    changes = "all settings and messages";
+                    updates = "配置和消息文件";
+                    changes = "全部设置和消息";
                 }
-                // delete necessary files
-                boolean success = false;
-                if (plugin.getConfigMgr().isSettingsUpdateRequired()
-                        || args[1].equalsIgnoreCase("force")) {
-                    File file = new File(plugin.getDataFolder().getPath() + File.separator + "config.yml");
-                    success = file.delete();
-                    plugin.getConfigMgr().getSettingsFile().save();
-                    plugin.getConfigMgr().getSettingsFile().reload();
-                    plugin.getConfigMgr().setSettings(plugin.getConfigMgr().getSettingsFile().getConfig());
-                }
-                if (plugin.getConfigMgr().isMessagesUpdateRequired()
-                        || args[1].equalsIgnoreCase("force")) {
-                    File file2 = new File(plugin.getDataFolder().getPath() + File.separator + "messages.yml");
-                    success &= file2.delete();
-                    plugin.getConfigMgr().getMessagesFile().save();
-                    plugin.getConfigMgr().getMessagesFile().reload();
-                    plugin.getConfigMgr().setMessages(plugin.getConfigMgr().getMessagesFile().getConfig());
-
-                }
-                if (!success) {
-                    p.sendMessage(ChatColor.RED +
-                            "Cannot update config, failed to delete file. Are the file permissions valid?");
-                    return;
-                }
-                plugin.sendMessage(p, plugin.getMessage("RecreatedConfig")
-                        .replace("%changes%", changes)
-                        .replace("%updates%", updates), p);
-                // update update-information
-                plugin.getConfigMgr().checkFilesForLeftOvers();
+                plugin.recreateFiles(p,
+                        plugin.getConfigMgr().isSettingsUpdateRequired() || args[1].equalsIgnoreCase("force"),
+                        plugin.getConfigMgr().isMessagesUpdateRequired() || args[1].equalsIgnoreCase("force"),
+                        plugin.getMessage("RecreatedConfig").replace("%changes%", changes).replace("%updates%", updates));
             } else if (args[1].equalsIgnoreCase("dismiss")) {
                 String currentVersion = plugin.getDescription().getVersion();
                 boolean isDismissed =
                         plugin.getPlayerData().getBoolean("PlayerData." + (p instanceof Player ? ((Player) p)
                                 .getUniqueId()
                                 .toString() : "CONSOLE") + ".dismissed." + currentVersion.replace(".", "_"), false);
-                plugin.getPlayerData().set("PlayerData." + (p instanceof Player ? ((Player) p).getUniqueId().toString()
-                        : "CONSOLE") + ".dismissed." + currentVersion.replace(".", "_"), !isDismissed);
+                plugin.getConfigMgr().getPlayerDataFile().update(config -> config.set("PlayerData." + (p instanceof Player ? ((Player) p).getUniqueId().toString()
+                        : "CONSOLE") + ".dismissed." + currentVersion.replace(".", "_"), !isDismissed));
                 plugin.getConfigMgr().getPlayerDataFile().save();
                 if (!isDismissed)
                     plugin.sendMessage(p, "DismissedRecreationWarning", p);

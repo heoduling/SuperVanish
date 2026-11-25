@@ -48,13 +48,13 @@ public class LoginListener implements Listener {
             }
             if (vanished) {
                 // hide self
-                for (Player onlinePlayer : Bukkit.getOnlinePlayers())
+                for (Player onlinePlayer : plugin.onlinePlayers())
                     if (!plugin.hasPermissionToSee(onlinePlayer, p))
                         plugin.getVisibilityChanger().getHider().setHidden(p, onlinePlayer, true);
             }
 
             // hide others
-            for (Player onlinePlayer : Bukkit.getOnlinePlayers())
+            for (Player onlinePlayer : plugin.onlinePlayers())
                 if (plugin.getVanishStateMgr().isVanished(onlinePlayer.getUniqueId())
                         && !plugin.hasPermissionToSee(p, onlinePlayer))
                     plugin.getVisibilityChanger().getHider().setHidden(onlinePlayer, p, true);

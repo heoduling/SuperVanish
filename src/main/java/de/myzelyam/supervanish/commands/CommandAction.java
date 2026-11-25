@@ -21,7 +21,7 @@ public enum CommandAction {
             "sv.use",
             false,
             "/sv [on|off]",
-            "Toggles your visibility") {
+            "切换自己的隐身状态（on 隐身，off 显形）") {
         @Override
         public boolean checkPermission(CommandSender sender, SuperVanish plugin) {
             Validation.checkNotNull(plugin, "plugin cannot be null");
@@ -31,28 +31,28 @@ public enum CommandAction {
     VANISH_OTHER(
             "sv.others",
             true,
-            "/sv [on|off] <player>",
-            "Shows or hides a player"),
+            "/sv [on|off] <玩家名>",
+            "设置指定玩家的隐身状态"),
     VANISHED_LIST(
             "sv.list",
             true,
             "/sv list",
-            "Shows a list of vanished players"),
+            "查看隐身玩家列表"),
     BROADCAST_LOGIN(
             "sv.login",
             false,
             "/sv login",
-            "Broadcasts a fake login message"),
+            "广播自己的假进服消息"),
     BROADCAST_LOGOUT(
             "sv.logout",
             false,
             "/sv logout",
-            "Broadcasts a fake logout message"),
+            "广播自己的假退服消息"),
     TOGGLE_ITEM_PICKUPS(
             "sv.toggleitems",
             false,
             "/sv tipu",
-            "Toggles picking up items") {
+            "切换隐身时是否捡拾物品") {
         @Override
         public boolean checkPermission(CommandSender sender, SuperVanish plugin) {
             return sender.hasPermission(getMainPermission()) || sender.hasPermission("sv.toggleitempickups");
@@ -62,7 +62,7 @@ public enum CommandAction {
             "sv.recreatefiles",
             true,
             "/sv recreatefiles",
-            "Recreates the config") {
+            "查看配置重建提示（confirm 确认，dismiss 切换提醒，force 强制重置）") {
         @Override
         public boolean checkPermission(CommandSender sender, SuperVanish plugin) {
             return sender.hasPermission(getMainPermission()) || sender.hasPermission("sv.updatecfg");
@@ -72,17 +72,17 @@ public enum CommandAction {
             "sv.reload",
             true,
             "/sv reload",
-            "Reloads all settings and messages"),
+            "重载配置和消息"),
     PRINT_STACKTRACE(
             "sv.stacktrace",
             true,
             "/sv stacktrace",
-            "Logs info for a bug report"),
+            "向控制台输出诊断信息"),
     SHOW_HELP(
             "sv.help",
             true,
             "/sv help",
-            "Shows this help page");
+            "查看此帮助页");
 
     /**
      * Use {@link #checkPermission(CommandSender, SuperVanish)} to check whether a {@link CommandSender} has

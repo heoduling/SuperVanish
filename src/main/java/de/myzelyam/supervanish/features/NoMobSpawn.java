@@ -9,6 +9,7 @@ import org.bukkit.GameMode;
 import org.bukkit.entity.HumanEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 
 import java.util.List;
 import java.util.UUID;
@@ -16,9 +17,38 @@ import java.util.UUID;
 public class NoMobSpawn extends Feature {
 
     private boolean suppressErrors = false;
+    private boolean enabled;
+    private boolean spawnerRegistered;
 
     public NoMobSpawn(SuperVanish plugin) {
         super(plugin);
+    }
+
+    @Override
+    public synchronized void onEnable() {
+        enabled = true;
+        refreshSpawnerListener();
+    }
+
+    @Override
+    public synchronized void onDisable() {
+        enabled = false;
+        refreshSpawnerListener();
+    }
+
+    public synchronized void refreshSpawnerListener() {
+        boolean needed = enabled && !plugin.getVanishStateMgr().getOnlineVanishedPlayers().isEmpty();
+        if (needed == spawnerRegistered) return;
+        if (needed) {
+            // This sub-event shares the natural pre-spawn table: subscribe only while needed.
+            Bukkit.getPluginManager().registerEvent(PreSpawnerSpawnEvent.class, this, EventPriority.NORMAL,
+                    (listener, event) -> {
+                        if (event instanceof PreSpawnerSpawnEvent spawn) onEntitySpawnerSpawn(spawn);
+                    }, plugin);
+        } else {
+            PreSpawnerSpawnEvent.getHandlerList().unregister(this);
+        }
+        spawnerRegistered = needed;
     }
 
     @EventHandler
@@ -57,14 +87,14 @@ public class NoMobSpawn extends Feature {
         }
     }
 
-    @EventHandler
     public void onEntitySpawnerSpawn(PreSpawnerSpawnEvent e) {
         try {
             // First check if a non-spectator vanished player is in range
             boolean vanishedPlayerInRange = false;
-            for (UUID vanishedUUID : plugin.getVanishStateMgr().getOnlineVanishedPlayers()) {
-                Player p = Bukkit.getPlayer(vanishedUUID);
-                if (p == null) continue;
+            java.util.Collection<Player> nearby = e.getSpawnerLocation().getNearbyPlayers(16);
+            for (Player p : nearby) {
+                if (!org.bukkit.Bukkit.isOwnedByCurrentRegion(p)) continue;
+                if (!plugin.getVanishStateMgr().isVanished(p.getUniqueId())) continue;
                 if (p.getWorld().equals(e.getSpawnerLocation().getWorld()) &&
                         p.getLocation().distanceSquared(e.getSpawnerLocation()) <= 256 &&
                         p.getGameMode() != GameMode.SPECTATOR)
@@ -73,7 +103,8 @@ public class NoMobSpawn extends Feature {
             if (!vanishedPlayerInRange) return;
 
             // If so, only cancel if no non-vanished player is in range
-            for (Player p : Bukkit.getOnlinePlayers()) {
+            for (Player p : nearby) {
+                if (!org.bukkit.Bukkit.isOwnedByCurrentRegion(p)) return; // Do not cancel based on an unowned player's live state.
                 if (p.getWorld().equals(e.getSpawnerLocation().getWorld()) &&
                         p.getLocation().distanceSquared(e.getSpawnerLocation()) <= 256 &&
                         p.getGameMode() != GameMode.SPECTATOR &&

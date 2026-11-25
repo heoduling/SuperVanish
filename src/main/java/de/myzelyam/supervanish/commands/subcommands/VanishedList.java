@@ -35,13 +35,13 @@ public class VanishedList extends SubCommand {
             StringBuilder stringBuilder = new StringBuilder();
             List<UUID> allInvisiblePlayerUUIDs = ImmutableList.copyOf(getAllVanishedPlayers());
             if (allInvisiblePlayerUUIDs.isEmpty()) {
-                stringBuilder.append("none");
+                stringBuilder.append("无");
             }
             for (int i = 0; i < allInvisiblePlayerUUIDs.size(); i++) {
                 UUID playerUUID = allInvisiblePlayerUUIDs.get(i);
                 String name = Bukkit.getOfflinePlayer(playerUUID).getName();
-                if (Bukkit.getPlayer(playerUUID) == null) {
-                    name = name + ChatColor.RED + "[offline]" + ChatColor.WHITE;
+                if (plugin.player(playerUUID) == null) {
+                    name = name + ChatColor.RED + "[离线]" + ChatColor.WHITE;
                 }
                 stringBuilder.append(name);
                 if (i != allInvisiblePlayerUUIDs.size() - 1) {

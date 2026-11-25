@@ -26,17 +26,7 @@ public class Reload extends SubCommand {
     @Override
     public void execute(Command cmd, CommandSender p, String[] args, String label) {
         if (canDo(p, CommandAction.RELOAD, true)) {
-            long before = System.currentTimeMillis();
-            plugin.reload();
-            if (!Bukkit.getPluginManager().isPluginEnabled(plugin)) {
-                p.sendMessage(ChatColor.RED +
-                        "Failed to reload SuperVanish since it failed to restart itself. " +
-                        "More information is in the console. ("
-                        + (System.currentTimeMillis() - before) + "ms)");
-                return;
-            }
-            plugin.sendMessage(p, plugin.getMessage("PluginReloaded").replace("%time%",
-                    (System.currentTimeMillis() - before) + ""), p);
+            plugin.reload(p);
         }
     }
 }

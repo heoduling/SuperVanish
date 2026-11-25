@@ -19,7 +19,7 @@ import java.util.logging.Level;
 
 import static de.myzelyam.supervanish.SuperVanish.*;
 
-public class ConfigMgr {
+public class ConfigMgr implements AutoCloseable {
 
     private final SuperVanish plugin;
     private final FileMgr fileMgr;
@@ -43,12 +43,23 @@ public class ConfigMgr {
         // data
         playerDataFile = (StorageFile) fileMgr.addFile("data", FileMgr.FileType.STORAGE);
         playerData = playerDataFile.getConfig();
-        playerData.addDefault("InvisiblePlayers", Collections.emptyList());
-        playerData.options().copyDefaults(true);
-        playerData.options().header("SuperVanish v" + plugin.getDescription().getVersion() + " - Data file");
-        playerDataFile.save();
+        if (!playerData.contains("InvisiblePlayers"))
+            playerDataFile.update(config -> config.set("InvisiblePlayers", Collections.emptyList()));
 
-        checkFilesForLeftOvers();
+    }
+
+    /** Called only from the configuration I/O stage, before publishing this manager. */
+    public void recreateFiles(boolean settings, boolean messages) {
+        try {
+            if (settings) java.nio.file.Files.deleteIfExists(plugin.getDataFolder().toPath().resolve("config.yml"));
+            if (messages) java.nio.file.Files.deleteIfExists(plugin.getDataFolder().toPath().resolve("messages.yml"));
+        } catch (java.io.IOException failure) {
+            throw new IllegalStateException("Cannot recreate configuration files", failure);
+        }
+    }
+
+    @Override public void close() {
+        if (playerDataFile != null) playerDataFile.close();
     }
 
     public void checkFilesForLeftOvers() {
@@ -93,7 +104,7 @@ public class ConfigMgr {
     }
 
     public FileConfiguration getPlayerData() {
-        return playerData;
+        return playerDataFile.getConfig();
     }
 
     public StorageFile getPlayerDataFile() {

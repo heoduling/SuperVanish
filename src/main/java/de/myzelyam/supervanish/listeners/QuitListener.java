@@ -58,7 +58,8 @@ public class QuitListener implements EventExecutor, Listener {
                     }
                 }
                 // remove VanishPlayer
-                plugin.removeVanishPlayer(plugin.getVanishPlayer(p));
+                try { plugin.cleanPlayer(p); }
+                finally { plugin.removeVanishPlayer(p); }
             }
         } catch (Exception er) {
             plugin.logException(er);

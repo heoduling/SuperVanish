@@ -43,7 +43,7 @@ public class VanishOther extends SubCommand {
                 if (args[0].equalsIgnoreCase("on") || args[0].equalsIgnoreCase("enable")
                         || args[0].equalsIgnoreCase("vanish"))
                     hide = true;
-                target = Bukkit.getPlayer(args[1]);
+                target = plugin.player(args[1]);
                 name = target == null ? args[1] : target.getName();
             } else {
                 target = specifiedPlayer;
@@ -62,7 +62,7 @@ public class VanishOther extends SubCommand {
                 uuid = target.getUniqueId();
             }
             if (!offline && sender instanceof Player && sender != target
-                    && target.hasPermission("sv.notoggle")) {
+                    && plugin.getVanishPlayer(target).isToggleProtected()) {
                 plugin.sendMessage(sender, "CannotHideOtherPlayer", sender, name);
                 return;
             }
@@ -84,20 +84,21 @@ public class VanishOther extends SubCommand {
             else if (args.length == 2)
                 silent = args[1].equalsIgnoreCase("-s");
             if (!offline) {
-                if (hide) {
-                    plugin.getVisibilityChanger().hidePlayer(target, sender.getName(), silent);
-                    plugin.sendMessage(sender, "HideOtherMessage", sender, name);
-                } else {
-                    plugin.getVisibilityChanger().showPlayer(target, sender.getName());
-                    plugin.sendMessage(sender, "ShowOtherMessage", sender, name, silent);
-                }
+                boolean requested = hide, quiet = silent;
+                String targetName = name, cause = sender.getName();
+                plugin.getLifecycle().player(target, () -> {
+                    if (requested) plugin.getVisibilityChanger().hidePlayer(target, cause, quiet);
+                    else plugin.getVisibilityChanger().showPlayer(target, cause, quiet);
+                    if (isVanished(target.getUniqueId()) == requested)
+                        plugin.sendMessage(sender, requested ? "HideOtherMessage" : "ShowOtherMessage", sender, targetName);
+                });
             } else {
                 if (hide) {
                     plugin.getVanishStateMgr().setVanishedState(uuid, name, true, sender.getName());
-                    plugin.sendMessage(sender, "HideOtherMessage", sender, name);
+                    if (isVanished(uuid)) plugin.sendMessage(sender, "HideOtherMessage", sender, name);
                 } else {
                     plugin.getVanishStateMgr().setVanishedState(uuid, name, false, sender.getName());
-                    plugin.sendMessage(sender, "ShowOtherMessage", sender, name);
+                    if (!isVanished(uuid)) plugin.sendMessage(sender, "ShowOtherMessage", sender, name);
                 }
             }
         }

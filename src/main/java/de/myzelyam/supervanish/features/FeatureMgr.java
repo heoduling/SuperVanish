@@ -25,10 +25,9 @@ import java.util.Set;
 
 public class FeatureMgr {
 
-    private static final Requirement<FeatureInfo> protocolLibInstalled = featureInfo -> Bukkit.getPluginManager().isPluginEnabled("ProtocolLib"),
-            oneDotEightOrHigher = featureInfo -> featureInfo.getPlugin().getVersionUtil().isOneDotXOrHigher(8),
+    private static final Requirement<FeatureInfo> oneDotEightOrHigher = featureInfo -> featureInfo.getPlugin().getVersionUtil().isOneDotXOrHigher(8),
             oneDotSeventeenOrHigher = featureInfo -> featureInfo.getPlugin().getVersionUtil().isOneDotXOrHigher(17),
-            supportedServer = featureInfo -> Bukkit.getServer().getName().equals("Paper") || Bukkit.getServer().getName().equals("Purpur");
+            supportedServer = featureInfo -> true;
     private final Map<String, FeatureInfo> registeredFeatures = new HashMap<>();
     private final Set<Feature> activeFeatures = new HashSet<>();
     private final SuperVanish plugin;
@@ -36,11 +35,10 @@ public class FeatureMgr {
     public FeatureMgr(SuperVanish plugin) {
         this.plugin = plugin;
         registeredFeatures.put("SilentOpenChest", new FeatureInfo(SilentOpenChest.class, plugin,
-                Arrays.asList(protocolLibInstalled, oneDotEightOrHigher)));
+                Collections.emptyList()));
         registeredFeatures.put("NightVision", new FeatureInfo(NightVision.class, plugin,
-                Arrays.asList(protocolLibInstalled, oneDotEightOrHigher)));
-        registeredFeatures.put("VanishIndication", new FeatureInfo(VanishIndication.class, plugin,
-                Arrays.asList(protocolLibInstalled, oneDotEightOrHigher)));
+                Collections.emptyList()));
+        registeredFeatures.put("NoPush", new FeatureInfo(NoPush.class, plugin));
         registeredFeatures.put("Broadcast", new FeatureInfo(Broadcast.class, plugin));
         registeredFeatures.put("NoSculkSensorDetection", new FeatureInfo(NoSculkSensorDetection.class, plugin,
                 Collections.singletonList(oneDotSeventeenOrHigher)));

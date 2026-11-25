@@ -36,7 +36,7 @@ public class PluginHookMgr implements Listener {
         put("OpenInv", OpenInvHook.class);
     }};
     private final SuperVanish plugin;
-    private Set<PluginHook> activeHooks = new HashSet<>();
+    private Set<PluginHook> activeHooks = java.util.concurrent.ConcurrentHashMap.newKeySet();
 
     public PluginHookMgr(SuperVanish plugin) {
         this.plugin = plugin;
@@ -57,7 +57,7 @@ public class PluginHookMgr implements Listener {
                     newInstance(PluginHookMgr.this.plugin);
             hook.setPlugin(plugin);
             hook.onPluginEnable(plugin);
-            Bukkit.getPluginManager().registerEvents(hook, plugin);
+            Bukkit.getPluginManager().registerEvents(hook, this.plugin);
             activeHooks.add(hook);
             PluginHookMgr.this.plugin.log(
                     Level.INFO, "Hooked into " + plugin.getName());
@@ -103,6 +103,7 @@ public class PluginHookMgr implements Listener {
             this.plugin.logException(new InvalidPluginHookException(e1));
         }
         hook.setPlugin(null);
+        org.bukkit.event.HandlerList.unregisterAll(hook);
         activeHooks.remove(hook);
     }
 
@@ -118,5 +119,19 @@ public class PluginHookMgr implements Listener {
             }
         }
         return false;
+    }
+
+    public void cleanupPlayer(org.bukkit.entity.Player player) {
+        for (PluginHook hook : activeHooks) hook.cleanupPlayer(player);
+    }
+
+    public void close() {
+        for (PluginHook hook : java.util.List.copyOf(activeHooks)) {
+            try { hook.onPluginDisable(hook.getPlugin()); }
+            catch (Throwable failure) { plugin.logException(failure); }
+            org.bukkit.event.HandlerList.unregisterAll(hook);
+            hook.setPlugin(null);
+        }
+        activeHooks.clear();
     }
 }

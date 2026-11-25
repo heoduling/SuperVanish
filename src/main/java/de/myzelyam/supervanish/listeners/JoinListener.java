@@ -1,97 +1,49 @@
-/*
- * Copyright © 2015, Leon Mangler and the SuperVanish contributors
- *
- * This Source Code Form is subject to the terms of the Mozilla Public
- * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at http://mozilla.org/MPL/2.0/.
- */
-
+/* Copyright © 2015, Leon Mangler and the SuperVanish contributors. MPL-2.0. */
 package de.myzelyam.supervanish.listeners;
-
 import de.myzelyam.supervanish.SuperVanish;
+import de.myzelyam.supervanish.commands.CommandAction;
 import de.myzelyam.supervanish.features.Broadcast;
-
-import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
-import org.bukkit.event.Event;
-import org.bukkit.event.Listener;
+import org.bukkit.event.*;
 import org.bukkit.event.player.PlayerJoinEvent;
-import org.bukkit.metadata.FixedMetadataValue;
 import org.bukkit.plugin.EventExecutor;
-import org.bukkit.scheduler.BukkitRunnable;
 
 public class JoinListener implements EventExecutor, Listener {
-
     private final SuperVanish plugin;
-
-    public JoinListener(SuperVanish plugin) {
-        this.plugin = plugin;
-    }
-
-    @Override
-    public void execute(Listener l, Event event) {
-        try {
-            if (event instanceof PlayerJoinEvent) {
-                PlayerJoinEvent e = (PlayerJoinEvent) event;
-                final Player p = e.getPlayer();
-                // hide others
-                for (Player onlinePlayer : Bukkit.getOnlinePlayers())
-                    if (plugin.getVanishStateMgr().isVanished(onlinePlayer.getUniqueId())
-                            && !plugin.hasPermissionToSee(p, onlinePlayer))
-                        plugin.getVisibilityChanger().getHider().setHidden(onlinePlayer, p, true);
-                // vanished:
-                if (plugin.getVanishStateMgr().isVanished(p.getUniqueId())) {
-                    // hide self
-                    for (Player onlinePlayer : Bukkit.getOnlinePlayers())
-                        if (!plugin.hasPermissionToSee(onlinePlayer, p))
-                            plugin.getVisibilityChanger().getHider().setHidden(p, onlinePlayer, true);
-                    // Join message
-                    if (plugin.getSettings().getBoolean("MessageOptions.HideRealJoinQuitMessages")) {
-                        e.setJoinMessage(null);
-                        Broadcast.announceSilentJoin(p, plugin);
-                    }
-                    // reminding message
-                    if (plugin.getSettings().getBoolean("MessageOptions.RemindVanishedOnJoin")) {
-                        plugin.sendMessage(p, "RemindingMessage", p);
-                    }
-                    // re-add action bar
-                    if (plugin.getActionBarMgr() != null && plugin.getSettings().getBoolean(
-                            "MessageOptions.DisplayActionBar")) {
-                        plugin.getActionBarMgr().addActionBar(p);
-                    }
-                    // sleep state
-                    p.setSleepingIgnored(true);
-                    // adjust fly
-                    if (plugin.getSettings().getBoolean("InvisibilityFeatures.Fly.Enable")) {
-                        p.setAllowFlight(true);
-                    }
-                    // metadata
-                    p.setMetadata("vanished", new FixedMetadataValue(plugin, true));
-                } else {
-                    // not vanished:
-                    // metadata
-                    p.removeMetadata("vanished", plugin);
-                }
-                // not necessarily vanished:
-                // recreate files msg
-                if ((p.hasPermission("sv.recreatecfg") || p.hasPermission("sv.recreatefiles"))
-                        && (plugin.getConfigMgr().isSettingsUpdateRequired()
-                        || plugin.getConfigMgr().isMessagesUpdateRequired())) {
-                    String currentVersion = plugin.getDescription().getVersion();
-                    boolean isDismissed =
-                            plugin.getPlayerData().getBoolean("PlayerData." + p.getUniqueId() + ".dismissed."
-                                    + currentVersion.replace(".", "_"), false);
-                    if (!isDismissed)
-                        new BukkitRunnable() {
-                            @Override
-                            public void run() {
-                                plugin.sendMessage(p, "RecreationRequiredMsg", p);
-                            }
-                        }.runTaskLater(plugin, 1);
-                }
-            }
-        } catch (Exception er) {
-            plugin.logException(er);
+    public JoinListener(SuperVanish plugin) { this.plugin = plugin; }
+    @Override public void execute(Listener listener, Event event) {
+        if (!(event instanceof PlayerJoinEvent join)) return;
+        Player player = join.getPlayer();
+        if (!org.bukkit.Bukkit.isOwnedByCurrentRegion(player))
+            throw new IllegalStateException("PlayerJoinEvent must run on its player owner");
+        boolean[] started = {false};
+        plugin.getLifecycle().player(player, () -> {
+            started[0] = true;
+            initialize(join);
+        });
+        if (!started[0]) {
+            join.setJoinMessage(null);
+            player.kickPlayer("SuperVanish 正在维护，请稍后重新连接。");
         }
+    }
+    private void initialize(PlayerJoinEvent join) {
+        Player player = join.getPlayer();
+        plugin.createVanishPlayer(player, plugin.getPlayerData().getBoolean("PlayerData." + player.getUniqueId() + ".itemPickUps",
+                plugin.getSettings().getBoolean("InvisibilityFeatures.DefaultPickUpItemsOption")));
+        boolean vanished = plugin.getVanishStateMgr().isVanished(player.getUniqueId());
+        if (vanished && plugin.getSettings().getBoolean("VanishStateFeatures.CheckPermissionOnLogin")
+                && !CommandAction.VANISH_SELF.checkPermission(player, plugin))
+            plugin.getVanishStateMgr().setVanishedState(player.getUniqueId(), player.getName(), false, null);
+        if (player.hasPermission("sv.joinvanished") && plugin.getSettings().getBoolean("VanishStateFeatures.AutoVanishOnJoin"))
+            plugin.getVanishStateMgr().setVanishedState(player.getUniqueId(), player.getName(), true, null);
+        plugin.resumePlayer(player);
+        if (plugin.getVanishStateMgr().isVanished(player.getUniqueId())) {
+            if (plugin.getSettings().getBoolean("MessageOptions.HideRealJoinQuitMessages")) {
+                join.setJoinMessage(null);
+                Broadcast.announceSilentJoin(player, plugin);
+            }
+            if (plugin.getSettings().getBoolean("MessageOptions.RemindVanishedOnJoin"))
+                plugin.sendMessage(player, "RemindingMessage", player);
+        } else player.removeMetadata("vanished", plugin);
     }
 }

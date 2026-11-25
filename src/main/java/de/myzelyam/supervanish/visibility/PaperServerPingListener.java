@@ -32,7 +32,7 @@ public class PaperServerPingListener implements Listener {
                 return;
             Collection<UUID> onlineVanishedPlayers = plugin.getVanishStateMgr().getOnlineVanishedPlayers();
             int vanishedPlayersCount = onlineVanishedPlayers.size(),
-                    playerCount = Bukkit.getOnlinePlayers().size();
+                    playerCount = plugin.onlinePlayers().size();
             if (settings.getBoolean("ExternalInvisibility.ServerList.AdjustAmountOfOnlinePlayers")) {
                 e.setNumPlayers(playerCount - vanishedPlayersCount);
             }

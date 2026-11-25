@@ -21,6 +21,7 @@ import java.util.UUID;
 public class PlaceholderAPIHook extends PluginHook {
 
     private final String yes, no, prefix, suffix;
+    private final SVPlaceholderExpansion expansion;
 
     public PlaceholderAPIHook(SuperVanish superVanish) {
         super(superVanish);
@@ -28,8 +29,13 @@ public class PlaceholderAPIHook extends PluginHook {
         no = superVanish.getMessage("PlaceholderIsVanishedNo");
         prefix = superVanish.getMessage("PlaceholderVanishPrefix");
         suffix = superVanish.getMessage("PlaceholderVanishSuffix");
-        new SVPlaceholderExpansion().register();
+        var old = me.clip.placeholderapi.PlaceholderAPIPlugin.getInstance().getLocalExpansionManager().getExpansion("supervanish");
+        if (old != null && old.getClass().getName().equals(SVPlaceholderExpansion.class.getName())) old.unregister();
+        expansion = new SVPlaceholderExpansion();
+        if (!expansion.register()) throw new IllegalStateException("Cannot register SuperVanish placeholders");
     }
+
+    @Override public void onPluginDisable(org.bukkit.plugin.Plugin dependency) { expansion.unregister(); }
 
     public static String translatePlaceholders(String msg, Player p) {
         return PlaceholderAPI.setPlaceholders((OfflinePlayer) p, msg);
@@ -91,7 +97,7 @@ public class PlaceholderAPIHook extends PluginHook {
                             .getOnlineVanishedPlayers();
                     String playerListMessage = "";
                     for (UUID uuid : onlineVanishedPlayers) {
-                        Player onlineVanished = Bukkit.getPlayer(uuid);
+                        Player onlineVanished = superVanish.player(uuid);
                         if (onlineVanished == null) continue;
                         if (superVanish.getSettings().getBoolean(
                                 "IndicationFeatures.LayeredPermissions.HideInvisibleInCommands", false)
@@ -106,10 +112,10 @@ public class PlaceholderAPIHook extends PluginHook {
                 }
                 if (id.equalsIgnoreCase("playercount")
                         || id.equalsIgnoreCase("onlineplayers")) {
-                    int playercount = Bukkit.getOnlinePlayers().size();
+                    int playercount = superVanish.onlinePlayers().size();
                     for (UUID uuid : superVanish.getVanishStateMgr()
                             .getOnlineVanishedPlayers()) {
-                        Player onlineVanished = Bukkit.getPlayer(uuid);
+                        Player onlineVanished = superVanish.player(uuid);
                         if (onlineVanished == null) continue;
                         if (p == null || !superVanish.canSee(p, onlineVanished)) playercount--;
                     }

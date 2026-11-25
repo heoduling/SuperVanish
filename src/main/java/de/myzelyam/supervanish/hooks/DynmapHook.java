@@ -8,8 +8,8 @@
 
 package de.myzelyam.supervanish.hooks;
 
-import de.myzelyam.api.vanish.PlayerHideEvent;
-import de.myzelyam.api.vanish.PlayerShowEvent;
+import de.myzelyam.api.vanish.PostPlayerHideEvent;
+import de.myzelyam.api.vanish.PostPlayerShowEvent;
 import de.myzelyam.supervanish.SuperVanish;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -22,6 +22,7 @@ public class DynmapHook extends PluginHook {
 
     private final boolean sendJoinLeave;
     private final SuperVanish superVanish;
+    private final java.util.Map<java.util.UUID, Boolean> previous = new java.util.concurrent.ConcurrentHashMap<>();
 
     public DynmapHook(SuperVanish superVanish) {
         super(superVanish);
@@ -32,10 +33,10 @@ public class DynmapHook extends PluginHook {
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
-    public void onVanish(PlayerHideEvent e) {
+    public void onVanish(PostPlayerHideEvent e) {
         Player p = e.getPlayer();
         DynmapAPI dynmap = (DynmapAPI) plugin;
-
+        previous.putIfAbsent(p.getUniqueId(), dynmap.getPlayerVisbility(p));
         dynmap.setPlayerVisiblity(p, false);
         if (sendJoinLeave)
             dynmap.sendBroadcastToWeb("",
@@ -43,11 +44,11 @@ public class DynmapHook extends PluginHook {
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
-    public void onReappear(PlayerShowEvent e) {
+    public void onReappear(PostPlayerShowEvent e) {
         Player p = e.getPlayer();
         DynmapAPI dynmap = (DynmapAPI) plugin;
 
-        dynmap.setPlayerVisiblity(p, true);
+        cleanupPlayer(p);
         if (sendJoinLeave)
             dynmap.sendBroadcastToWeb("",
                     superVanish.replacePlaceholders(superVanish.getMessage("DynmapFakeJoin"), p));
@@ -59,6 +60,7 @@ public class DynmapHook extends PluginHook {
         DynmapAPI dynmap = (DynmapAPI) plugin;
 
         if (superVanish.getVanishStateMgr().isVanished(p.getUniqueId())) {
+            previous.putIfAbsent(p.getUniqueId(), dynmap.getPlayerVisbility(p));
             dynmap.setPlayerVisiblity(p, false);
         }
     }
@@ -69,7 +71,13 @@ public class DynmapHook extends PluginHook {
         DynmapAPI dynmap = (DynmapAPI) plugin;
 
         if (superVanish.getVanishStateMgr().isVanished(p.getUniqueId())) {
-            dynmap.setPlayerVisiblity(p, true);
+            cleanupPlayer(p);
         }
     }
+
+    @Override public void cleanupPlayer(Player player) {
+        Boolean value = previous.remove(player.getUniqueId());
+        if (value != null && plugin != null && plugin.isEnabled()) ((DynmapAPI) plugin).setPlayerVisiblity(player, value);
+    }
+    @Override public void onPluginDisable(org.bukkit.plugin.Plugin dependency) { previous.clear(); }
 }

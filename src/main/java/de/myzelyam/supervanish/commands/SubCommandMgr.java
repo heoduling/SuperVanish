@@ -47,15 +47,15 @@ public class SubCommandMgr {
                     || args[0].equalsIgnoreCase("enable")
                     || args[0].equalsIgnoreCase("disable"))
                     && args.length > 1
-                    || Bukkit.getPlayer(args[0]) != null) {
-                executable = Bukkit.getPlayer(args[0]) != null
+                    || plugin.player(args[0]) != null) {
+                executable = plugin.player(args[0]) != null
                         && !(args[0].equalsIgnoreCase("on")
                         || args[0].equalsIgnoreCase("off")
                         || args[0].equalsIgnoreCase("vanish")
                         || args[0].equalsIgnoreCase("reappear")
                         || args[0].equalsIgnoreCase("enable")
                         || args[0].equalsIgnoreCase("disable"))
-                        ? new VanishOther(Bukkit.getPlayer(args[0]), plugin)
+                        ? new VanishOther(plugin.player(args[0]), plugin)
                         : new VanishOther(plugin);
             }
             // vanish self #2

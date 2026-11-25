@@ -8,8 +8,7 @@
 
 package de.myzelyam.supervanish.features;
 
-import com.comphenix.protocol.ProtocolLibrary;
-import de.myzelyam.api.vanish.PlayerShowEvent;
+import de.myzelyam.api.vanish.PostPlayerShowEvent;
 import de.myzelyam.supervanish.SuperVanish;
 import de.myzelyam.supervanish.hooks.OpenInvHook;
 import org.bukkit.GameMode;
@@ -26,7 +25,7 @@ import org.bukkit.event.inventory.InventoryType;
 import org.bukkit.event.player.*;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryView;
-import org.bukkit.scheduler.BukkitRunnable;
+import org.bukkit.event.inventory.InventoryOpenEvent;
 import org.bukkit.util.Vector;
 
 import java.util.*;
@@ -35,7 +34,7 @@ import static org.bukkit.Material.*;
 
 public class SilentOpenChest extends Feature {
 
-    private final Map<Player, StateInfo> playerStateInfoMap = new HashMap<>();
+    private final Map<UUID, StateInfo> playerStateInfoMap = new java.util.concurrent.ConcurrentHashMap<>();
 
     private final Collection<Material> additionalChestMaterials;
 
@@ -72,12 +71,20 @@ public class SilentOpenChest extends Feature {
     }
 
     @Override
-    public void onDisable() {
-        for (Player p : playerStateInfoMap.keySet()) {
-            StateInfo stateInfo = playerStateInfoMap.remove(p);
-            if (stateInfo == null) continue;
-            restoreState(stateInfo, p);
-        }
+    public void onDisable() { playerStateInfoMap.clear(); }
+
+    @Override
+    public void cleanupPlayer(Player p) {
+        StateInfo state = playerStateInfoMap.remove(p.getUniqueId());
+        if (state == null) return;
+        if (state.opened != null && p.getOpenInventory().getTopInventory() == state.opened) p.closeInventory();
+        restoreState(state, p);
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onInventoryOpen(InventoryOpenEvent event) {
+        StateInfo state = playerStateInfoMap.get(event.getPlayer().getUniqueId());
+        if (state != null) state.opened = event.getInventory();
     }
 
     @EventHandler(priority = EventPriority.LOWEST)
@@ -86,7 +93,7 @@ public class SilentOpenChest extends Feature {
             return;
         Player p = (Player) e.getWhoClicked();
         if (!plugin.getVanishStateMgr().isVanished(p.getUniqueId())) return;
-        if (!playerStateInfoMap.containsKey(p)) return;
+        if (!playerStateInfoMap.containsKey(p.getUniqueId())) return;
         if (p.getGameMode() == GameMode.SPECTATOR) {
             e.setCancelled(false);
         }
@@ -95,40 +102,35 @@ public class SilentOpenChest extends Feature {
     @EventHandler(priority = EventPriority.MONITOR)
     public void onQuit(PlayerQuitEvent e) {
         Player p = e.getPlayer();
-        StateInfo stateInfo = playerStateInfoMap.remove(p);
+        StateInfo stateInfo = playerStateInfoMap.remove(p.getUniqueId());
         if (stateInfo == null) return;
         restoreState(stateInfo, p);
-        playerStateInfoMap.remove(p);
+        playerStateInfoMap.remove(p.getUniqueId());
     }
 
     @EventHandler(priority = EventPriority.HIGH)
     public void onTeleport(PlayerTeleportEvent e) {
         Player p = e.getPlayer();
-        if (playerStateInfoMap.containsKey(p)
+        if (playerStateInfoMap.containsKey(p.getUniqueId())
                 && e.getCause() == PlayerTeleportEvent.TeleportCause.SPECTATE) {
             e.setCancelled(true);
         }
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
-    public void onReappear(PlayerShowEvent e) {
-        Player p = e.getPlayer();
-        StateInfo stateInfo = playerStateInfoMap.remove(p);
-        if (stateInfo == null) return;
-        p.closeInventory();
-        restoreState(stateInfo, p);
-        playerStateInfoMap.remove(p);
+    public void onReappear(PostPlayerShowEvent e) {
+        cleanupPlayer(e.getPlayer());
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onMove(PlayerMoveEvent e) {
         Player p = e.getPlayer();
-        if (playerStateInfoMap.containsKey(p)) {
+        if (playerStateInfoMap.containsKey(p.getUniqueId())) {
             Location loc = e.getTo() != null ? e.getTo() : e.getFrom();
-            if (playerStateInfoMap.get(p).openLoc.distance(loc) > .5) {
+            if (!playerStateInfoMap.get(p.getUniqueId()).openLoc.getWorld().equals(loc.getWorld()) || playerStateInfoMap.get(p.getUniqueId()).openLoc.distance(loc) > .5) {
                 p.closeInventory();
-                restoreState(playerStateInfoMap.get(p), p);
-                playerStateInfoMap.remove(p);
+                restoreState(playerStateInfoMap.get(p.getUniqueId()), p);
+                playerStateInfoMap.remove(p.getUniqueId());
             }
         }
     }
@@ -136,7 +138,7 @@ public class SilentOpenChest extends Feature {
     @EventHandler(priority = EventPriority.HIGH)
     public void onGameModeChange(PlayerGameModeChangeEvent e) {
         Player p = e.getPlayer();
-        if (playerStateInfoMap.containsKey(p) && e.getNewGameMode() != GameMode.SPECTATOR) {
+        if (playerStateInfoMap.containsKey(p.getUniqueId()) && e.getNewGameMode() != GameMode.SPECTATOR) {
             // Don't let low-priority event listeners cancel the gamemode change
             if (e.isCancelled()) e.setCancelled(false);
         }
@@ -144,6 +146,7 @@ public class SilentOpenChest extends Feature {
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onChestInteract(PlayerInteractEvent e) {
+        if (!plugin.getLifecycle().accepting()) return;
         Player p = e.getPlayer();
         if (!plugin.getVanishStateMgr().isVanished(p.getUniqueId())
                 || !p.hasPermission("sv.silentchest")) return;
@@ -167,37 +170,34 @@ public class SilentOpenChest extends Feature {
             return;
         StateInfo stateInfo = StateInfo.extract(p);
         p.setVelocity(new Vector(0, 0, 0));
-        playerStateInfoMap.put(p, stateInfo);
+        playerStateInfoMap.put(p.getUniqueId(), stateInfo);
         p.setGameMode(GameMode.SPECTATOR);
+        // InventoryOpenEvent may be cancelled, or vanilla may decline to open the container.
+        // Only keep spectator mode when this interaction actually opened a window.
+        plugin.getLifecycle().later(p, 1, () -> {
+            if (stateInfo.opened == null && playerStateInfoMap.remove(p.getUniqueId(), stateInfo))
+                restoreState(stateInfo, p);
+        });
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onChestClose(InventoryCloseEvent e) {
-        if (!(e.getPlayer() instanceof Player))
-            return;
-        final Player p = (Player) e.getPlayer();
-        if (!playerStateInfoMap.containsKey(p)) return;
-        new BukkitRunnable() {
-            @Override
-            public void run() {
-                StateInfo stateInfo = playerStateInfoMap.get(p);
-                if (stateInfo == null) return;
-                restoreState(stateInfo, p);
-                playerStateInfoMap.remove(p);
-            }
-        }.runTaskLater(plugin, 1);
+        if (!(e.getPlayer() instanceof Player p)) return;
+        StateInfo expected = playerStateInfoMap.get(p.getUniqueId());
+        if (expected == null) return;
+        if (expected.opened == null || e.getInventory() != expected.opened) return;
+        plugin.getLifecycle().later(p, 1, () -> {
+            if (playerStateInfoMap.remove(p.getUniqueId(), expected)) restoreState(expected, p);
+        });
     }
 
     private void restoreState(StateInfo stateInfo, Player p) {
         p.setGameMode(stateInfo.gameMode);
-        p.teleport(p.getLocation().add(0, 0.2, 0));
-        new BukkitRunnable() {
-            @Override
-            public void run() {
-                p.setAllowFlight(stateInfo.canFly);
-                p.setFlying(stateInfo.isFlying);
-            }
-        }.runTaskLater(plugin, 1);
+        if (p.getGameMode() != stateInfo.gameMode) throw new IllegalStateException("Silent-container gamemode restoration was cancelled");
+        p.setFlying(false);
+        p.setAllowFlight(stateInfo.canFly);
+        if (stateInfo.canFly) p.setFlying(stateInfo.isFlying);
+        if (plugin.getLifecycle().accepting()) plugin.getLifecycle().track(p.teleportAsync(p.getLocation().add(0, 0.2, 0)));
     }
 
     @Override
@@ -223,22 +223,18 @@ public class SilentOpenChest extends Feature {
     }
 
     public boolean hasSilentlyOpenedChest(Player p) {
-        return playerStateInfoMap.containsKey(p);
+        return playerStateInfoMap.containsKey(p.getUniqueId());
     }
 
     @Override
-    public void onEnable() {
-        if (!plugin.getVersionUtil().isOneDotXOrHigher(19)) {
-            SilentOpenChestPacketAdapter packetAdapter = new SilentOpenChestPacketAdapter(this);
-            ProtocolLibrary.getProtocolManager().addPacketListener(packetAdapter);
-        }
-    }
+    public void onEnable() { }
 
     private static class StateInfo {
 
         private final boolean canFly, isFlying;
         private final GameMode gameMode;
         private final Location openLoc;
+        private Inventory opened;
 
         StateInfo(boolean canFly, boolean isFlying, GameMode gameMode, Location openLoc) {
             this.canFly = canFly;

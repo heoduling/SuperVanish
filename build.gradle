@@ -1,0 +1,35 @@
+plugins { id 'java' }
+group = 'de.myzelyam'
+version = '6.3.0-6'
+java { toolchain { languageVersion = JavaLanguageVersion.of(25) } }
+dependencies {
+    compileOnly fileTree(dir: 'libs', include: ['*.jar'])
+    testImplementation fileTree(dir: 'libs', include: ['*.jar'])
+    testRuntimeOnly fileTree(dir: 'test-libs', include: ['*.jar'])
+}
+tasks.withType(JavaCompile).configureEach { options.encoding = 'UTF-8'; options.release = 25 }
+processResources {
+    inputs.property('pluginVersion', project.version)
+    filter { line -> line.replace('$' + '{project.version}', project.version.toString()) }
+}
+jar { archiveFileName = 'SuperVanish-' + project.version + '.jar' }
+tasks.register('verifyStorage', JavaExec) {
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'de.myzelyam.supervanish.StorageRegression'
+}
+check.dependsOn verifyStorage
+tasks.register('verifyLocalization', JavaExec) {
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'de.myzelyam.supervanish.config.LocalizationRegression'
+}
+check.dependsOn verifyLocalization
+tasks.register('verifyMobSpawning', JavaExec) {
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'de.myzelyam.supervanish.NoMobSpawnRegression'
+}
+check.dependsOn verifyMobSpawning
+// Regression checks have a main() entry point and run through verifyStorage.
+test { failOnNoDiscoveredTests = false }

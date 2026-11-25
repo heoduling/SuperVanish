@@ -24,7 +24,7 @@ import java.util.UUID;
 @SuppressWarnings("unused")
 public class VanishAPI {
 
-    private static SuperVanish PLUGIN;
+    private static volatile SuperVanish PLUGIN;
 
     /**
      * @return A collection of the UUIDs of all online vanished players

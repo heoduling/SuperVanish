@@ -26,6 +26,8 @@ import be.maximvdw.placeholderapi.PlaceholderReplacer;
 public class MVdWPlaceholderAPIHook extends PluginHook {
 
     private final String yes, no, prefix, suffix;
+    private be.maximvdw.placeholderapi.internal.PlaceholderPack pack;
+    private final java.util.Map<String, Object> registrations = new java.util.HashMap<>();
 
     public MVdWPlaceholderAPIHook(SuperVanish superVanish) {
         super(superVanish);
@@ -37,6 +39,11 @@ public class MVdWPlaceholderAPIHook extends PluginHook {
 
     @Override
     public void onPluginEnable(Plugin plugin) {
+        try {
+            var field = PlaceholderAPI.class.getDeclaredField("customPlaceholders");
+            field.setAccessible(true);
+            pack = (be.maximvdw.placeholderapi.internal.PlaceholderPack) field.get(null);
+        } catch (ReflectiveOperationException failure) { throw new IllegalStateException(failure); }
         PlaceholderAPI.registerPlaceholder(superVanish, "supervanish_isvanished",
                 e -> {
                     try {
@@ -100,7 +107,7 @@ public class MVdWPlaceholderAPIHook extends PluginHook {
                                 .getOnlineVanishedPlayers();
                         String playerListMessage = "";
                         for (UUID uuid : onlineVanishedPlayers) {
-                            Player onlineVanished = Bukkit.getPlayer(uuid);
+                            Player onlineVanished = superVanish.player(uuid);
                             if (onlineVanished == null) continue;
                             if (p != null && superVanish.getSettings().getBoolean(
                                     "IndicationFeatures.LayeredPermissions.HideInvisibleInCommands", false)
@@ -123,10 +130,10 @@ public class MVdWPlaceholderAPIHook extends PluginHook {
                 e -> {
                     try {
                         Player p = e.getPlayer();
-                        int playercount = Bukkit.getOnlinePlayers().size();
+                        int playercount = superVanish.onlinePlayers().size();
                         for (UUID uuid : superVanish.getVanishStateMgr()
                                 .getOnlineVanishedPlayers()) {
-                            Player onlineVanished = Bukkit.getPlayer(uuid);
+                            Player onlineVanished = superVanish.player(uuid);
                             if (onlineVanished == null) continue;
                             if (p == null || !superVanish.canSee(p, onlineVanished))
                                 playercount--;
@@ -136,8 +143,18 @@ public class MVdWPlaceholderAPIHook extends PluginHook {
                         if (!(t instanceof NoClassDefFoundError || t instanceof
                                 ConcurrentModificationException))
                             superVanish.logException(t);
-                        return Bukkit.getOnlinePlayers().size() + "";
+                        return superVanish.onlinePlayers().size() + "";
                     }
                 });
+        if (pack != null) for (String key : java.util.List.of("supervanish_isvanished", "supervanish_vanishprefix", "supervanish_vanishsuffix", "supervanish_vanishedplayers", "supervanish_playercount")) {
+            var value = pack.getPlaceholderReplacer(key);
+            if (value != null) registrations.put(key, value);
+        }
+    }
+    @Override public void onPluginDisable(Plugin dependency) {
+        if (pack != null) registrations.forEach((key, value) -> {
+            if (pack.getPlaceholderReplacer(key) == value) pack.removePlaceholder(key);
+        });
+        registrations.clear(); pack = null;
     }
 }

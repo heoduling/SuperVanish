@@ -47,7 +47,7 @@ public class CitizensHook extends PluginHook {
     private boolean checkContext(SpeechContext context) {
         // don't let it talk about hidden players
         for (UUID uuid : superVanish.getVanishStateMgr().getOnlineVanishedPlayers()) {
-            if (context.getMessage().contains(Bukkit.getPlayer(uuid).getName())) {
+            if (context.getMessage().contains(superVanish.player(uuid).getName())) {
                 return false;
             }
         }
